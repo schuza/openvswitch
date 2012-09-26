@@ -14,11 +14,21 @@ The best is to integrate this as a feed in OpenWrt
 
 > cd $TOPDIR
 > 
-> echo 'src-git openvswitch git://github.com/schuza/openvswitch.git' > feeds.conf
+> echo 'src-git openvswitch git://github.com/schuza/openvswitch.git' >> feeds.conf
 >
-> ./script/feeds/update
+> ./scripts/feeds update openvswitch
 >
-> ./script/feeds install
+> ./scripts/feeds install -a -p openvswitch
+> 
+> make menuconfig
+>
+> select Network -> openvswitch-switch, openvswitch-brcompat and openvswitch-controller
+>
+> echo '# CONFIG_KERNEL_BRIDGE is not set' >> .config
 
+
+
+Development
+-----------
 
 Please fork on githup and send pull requests.
