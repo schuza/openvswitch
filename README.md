@@ -1,14 +1,14 @@
 openvswitch
 ===========
 
-An Open vSwitch (1.4.3) package for OpenWrt release "Backfire".
+UPDATE: Works now with OpenWrt "Barrier Breaker" (Bleeding Edge)
 
-Note, due to the new introduced netifd in the upcoming release "Attitude Adjustment" this package only works with the old release "Backfire".
+Open vSwitch 1.9.0 (OvS) package for OpenWrt
 
 Installation
 ------------
 
-The best is to integrate this as a feed in OpenWrt
+Install this as a feed!
 
 ### Installation in OpenWrt
 
