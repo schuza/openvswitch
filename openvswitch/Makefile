@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 2009 OpenWrt.org
+# Copyright (C) 2013 Julius Schulz-Zander
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
@@ -8,20 +8,20 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME_SHORT:=openvswitch
-PKG_NAME:=$(PKG_NAME_SHORT)
+PKG_NAME:=openvswitch
 
+PKG_RELEASE:=1
+PKG_VERSION:=1.9.0
+
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=http://openvswitch.org/releases/
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+
+# Only for GIT
 #PKG_VERSION:=1.4.2
 #PKG_REV:=b9a30fe2ebb1d300178d6ba7628b3dc40ff1512b
-PKG_RELEASE:=1
-PKG_VERSION:=1.4.3
-
-#PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 #PKG_SOURCE_URL:=git://openvswitch.org/openvswitch
-PKG_SOURCE_URL:=http://openvswitch.org/releases/
 #PKG_SOURCE_PROTO:=git
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 #PKG_SOURCE_VERSION:=$(PKG_REV)
 
 include $(INCLUDE_DIR)/package.mk
@@ -33,7 +33,7 @@ define Package/openvswitch/Default
   SECTION:=net
   CATEGORY:=Network
   URL:=http://www.openvswitchswitch.org/
-  DEPENDS:=+libopenssl +librt
+  DEPENDS:=+libopenssl +librt +libpcap
   MAINTAINER:=Julius Schulz-Zander <julius@net.t-labs.tu-berlin.de>
 endef
 
@@ -50,11 +50,12 @@ endef
 define Package/openvswitch-common
   $(call Package/openvswitch/Default)
   TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+libopenssl +librt +kmod-openvswitch
+  DEPENDS:=+libpcap +libopenssl +librt +kmod-openvswitch
 endef
 
 define Package/openvswitch-common/description
-  openvswitch-common provides components required by both openvswitch-switch and openvswitch-controller.
+  openvswitch-common provides components required by both openvswitch-switch and
+  openvswitch-controller.
 endef
 
 define Package/openvswitch-ipsec
@@ -64,7 +65,8 @@ define Package/openvswitch-ipsec
 endef
 
 define Package/openvswitch-ipsec/description
-  The ovs-monitor-ipsec script provides support for encrypting GRE tunnels with IPsec.
+  The ovs-monitor-ipsec script provides support for encrypting GRE tunnels with 
+  IPsec.
 endef
 
 define Package/openvswitch-controller
@@ -92,7 +94,7 @@ endef
 define Package/openvswitch-brcompat
   $(call Package/openvswitch/Default)
   TITLE:=Open Flow Switch Userspace Package
-  DPENDS:=+openvswitch-common
+  DEPENDS:=+openvswitch-common
 endef
 
 define Package/openvswitch-brcompat/description
@@ -110,9 +112,9 @@ define KernelPackage/openvswitch
   KCONFIG:=CONFIG_BRIDGE
   DEPENDS:=+kmod-stp +kmod-ipv6
   FILES:= \
-	$(PKG_BUILD_DIR)/datapath/linux/brcompat_mod.$(LINUX_KMOD_SUFFIX) \
-	$(PKG_BUILD_DIR)/datapath/linux/openvswitch_mod.$(LINUX_KMOD_SUFFIX)
-  AUTOLOAD:=$(call AutoLoad,21,openvswitch_mod brcompat_mod)
+	$(PKG_BUILD_DIR)/datapath/linux/brcompat.$(LINUX_KMOD_SUFFIX) \
+	$(PKG_BUILD_DIR)/datapath/linux/openvswitch.$(LINUX_KMOD_SUFFIX)
+  AUTOLOAD:=$(call AutoLoad,21,openvswitch brcompat)
 endef
 
 define KernelPackage/openvswitch/description
@@ -120,9 +122,7 @@ define KernelPackage/openvswitch/description
   module. Furthermore, it supports OpenFlow.
 endef
 
-ifeq ($(KERNEL),2.6)
 CONFIGURE_ARGS += --with-linux=$(LINUX_DIR) --with-rundir=/var/run
-endif
 
 define Build/Configure
 	(cd $(PKG_BUILD_DIR); \
@@ -154,12 +154,6 @@ endef
 define Package/openvswitch-common/install
 	$(INSTALL_DIR) $(1)/sbin $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/openvswitch.init $(1)/etc/init.d/openvswitch
-
-	$(INSTALL_DIR) $(1)/sbin/
-	$(INSTALL_BIN) ./files/sbin/ifdown $(1)/sbin/
-
-	$(INSTALL_DIR) $(1)/lib/network/
-	$(INSTALL_BIN) ./files/lib/network/config.sh $(1)/lib/network/
 
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-appctl $(1)/usr/bin/
