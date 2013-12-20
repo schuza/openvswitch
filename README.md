@@ -31,4 +31,4 @@ Install this as a feed!
 Development
 -----------
 
-Please fork on githup and send pull requests.
+Please fork on github and send pull requests.
