@@ -1,5 +1,6 @@
 # 
-# Copyright (C) 2013 Julius Schulz-Zander
+# Copyright (C) 2013 Julius Schulz-Zander <julius@net.t-labs.tu-berlin.de>
+# Copyright (C) 2014 OpenWrt.org
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
@@ -10,31 +11,41 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openvswitch
 
-PKG_RELEASE:=1
-PKG_VERSION:=1.9.0
+PKG_RELEASE:=conntrack
+PKG_VERSION:=2.4.0
+PKG_RELEASE=$(PKG_SOURCE_VERSION)
+PKG_LICENSE:=Apache-2.0
+PKG_LICENSE_FILES:=COPYING
+PKG_USE_MIPS16:=0
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://openvswitch.org/releases/
+PKG_SOURCE_PROTO:=git
+#PKG_SOURCE_URL:=https://github.com/openvswitch/ovs
+PKG_SOURCE_URL:=https://github.com/justinpettit/ovs.git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+#PKG_SOURCE_VERSION:=a8353802a4d5b436ead2de728e549929cfdda232
+#PKG_SOURCE_VERSION:=0b1d5ad8e991fb31e6218f926476095657046674
+#PKG_SOURCE_VERSION:=a2c4c93e8f6e45a1ca3c0ee612806a1b373716f9
+PKG_SOURCE_VERSION:=8973d7dc0718f40e7c09e06a3e3f6b14ff4fd679
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 
-# Only for GIT
-#PKG_VERSION:=1.4.2
-#PKG_REV:=b9a30fe2ebb1d300178d6ba7628b3dc40ff1512b
-#PKG_SOURCE_URL:=git://openvswitch.org/openvswitch
-#PKG_SOURCE_PROTO:=git
-#PKG_SOURCE_VERSION:=$(PKG_REV)
+LIB_VERSION:=1.0.0
+
+SUPPORTED_KERNELS:=LINUX_3_8||LINUX_3_10||LINUX_3_13||LINUX_3_14||LINUX_3_18||LINUX_4_0
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/kernel.mk
+$(call include_mk, python-package.mk)
 
 PKG_FIXUP=libtool
+PKG_FIXUP:=autoreconf
+PKG_FIXUP:=patch-libtool
+PKG_FIXUP:=gettext-version
 
 define Package/openvswitch/Default
   SECTION:=net
   CATEGORY:=Network
-  URL:=http://www.openvswitchswitch.org/
-  DEPENDS:=+libopenssl +librt +libpcap
-  MAINTAINER:=Julius Schulz-Zander <julius@net.t-labs.tu-berlin.de>
+  URL:=http://openvswitch.org/
+  MAINTAINER:=Alexandru Ardelean <ardeleanalex@gmail.com>
 endef
 
 define Package/openvswitch/Default/description
@@ -47,21 +58,30 @@ define Package/openvswitch/Default/description
   1000V.
 endef
 
-define Package/openvswitch-common
+define Package/openvswitch
   $(call Package/openvswitch/Default)
-  TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+libpcap +libopenssl +librt +kmod-openvswitch
+  TITLE:=Open vSwitch Userspace Package
+  DEPENDS:=+libpcap +libopenssl +librt +libatomic +kmod-openvswitch @($(SUPPORTED_KERNELS))
 endef
 
-define Package/openvswitch-common/description
-  openvswitch-common provides components required by both openvswitch-switch and
-  openvswitch-controller.
+define Package/openvswitch/description
+  Provides the main userspace components required for Open vSwitch to function.
+endef
+
+define Package/openvswitch-python
+  $(call Package/openvswitch/Default)
+  TITLE:=Open vSwitch Python Support
+  DEPENDS:=@PACKAGE_openvswitch +PACKAGE_openvswitch:openvswitch +python
+endef
+
+define Package/openvswitch-python/description
+  Provides bindings and libraries for using Python to manipulate/work with Open vSwitch.
 endef
 
 define Package/openvswitch-ipsec
   $(call Package/openvswitch/Default)
-  TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+openvswitch-common
+  TITLE:=Open vSwitch Userspace Package
+  DEPENDS:=@PACKAGE_openvswitch +PACKAGE_openvswitch:openvswitch-python
 endef
 
 define Package/openvswitch-ipsec/description
@@ -69,52 +89,27 @@ define Package/openvswitch-ipsec/description
   IPsec.
 endef
 
-define Package/openvswitch-controller
+define Package/openvswitch-benchmark
   $(call Package/openvswitch/Default)
-  TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+openvswitch-common
+  TITLE:=Open vSwitch Userspace Package
+  DEPENDS:=@PACKAGE_openvswitch +PACKAGE_openvswitch:openvswitch
 endef
 
-define Package/openvswitch-controller/description
-  The Open vSwitch controller enables OpenFlow switches that connect to it to
-  act as MAC-learning Ethernet switches.
-endef
-
-define Package/openvswitch-switch
-  $(call Package/openvswitch/Default)
-  TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+openvswitch-common
-endef
-
-define Package/openvswitch-switch/description
-  openvswitch-switch provides the userspace components and utilities for the
-  Open vSwitch kernel-based switch.
-endef
-
-define Package/openvswitch-brcompat
-  $(call Package/openvswitch/Default)
-  TITLE:=Open Flow Switch Userspace Package
-  DEPENDS:=+openvswitch-common
-endef
-
-define Package/openvswitch-brcompat/description
-  openvswitch-brcompat provides a way for applications that use the Linux bridge
-  to gradually migrate to Open vSwitch. Programs that ordinarily control the
-  Linux bridge module, such as "brctl", instead control the Open vSwitch
-  kernel-based switch.
+define Package/openvswitch-benchmark/description
+  Utility for running OpenVSwitch benchmarking
 endef
 
 define KernelPackage/openvswitch
   SECTION:=kernel
   CATEGORY:=Kernel modules
   SUBMENU:=Network Support
-  TITLE:=Open Flow Data Path Drivers
+  TITLE:=Open vSwitch Kernel Package
   KCONFIG:=CONFIG_BRIDGE
-  DEPENDS:=+kmod-stp +kmod-ipv6
+  DEPENDS:=+kmod-l2tp +kmod-ipt-conntrack-extra +kmod-nf-conntrack-netlink +kmod-stp \
+			+kmod-ipv6 +kmod-gre +kmod-lib-crc32c +kmod-vxlan +kmod-nf-conntrack @($(SUPPORTED_KERNELS))
   FILES:= \
-	$(PKG_BUILD_DIR)/datapath/linux/brcompat.$(LINUX_KMOD_SUFFIX) \
 	$(PKG_BUILD_DIR)/datapath/linux/openvswitch.$(LINUX_KMOD_SUFFIX)
-  AUTOLOAD:=$(call AutoLoad,21,openvswitch brcompat)
+  AUTOLOAD:=$(call AutoLoad,21,openvswitch)
 endef
 
 define KernelPackage/openvswitch/description
@@ -122,7 +117,16 @@ define KernelPackage/openvswitch/description
   module. Furthermore, it supports OpenFlow.
 endef
 
-CONFIGURE_ARGS += --with-linux=$(LINUX_DIR) --with-rundir=/var/run
+CONFIGURE_ARGS += --with-linux=$(LINUX_DIR)
+CONFIGURE_ARGS += --with-rundir=/var/run
+CONFIGURE_ARGS += --enable-ndebug
+CONFIGURE_ARGS += --disable-ssl
+CONFIGURE_ARGS += --enable-shared
+CONFIGURE_ARGS += --with-dbdir=/tmp/openvswitch
+
+TARGET_CFLAGS += -flto
+
+#PKG_FIXUP:=autoreconf
 
 define Build/Configure
 	(cd $(PKG_BUILD_DIR); \
@@ -130,6 +134,11 @@ define Build/Configure
 	);
 	$(call Build/Configure/Default,$(CONFIGURE_ARGS))
 endef
+
+KCFLAGS=
+ifeq ($(CONFIG_GCC_VERSION_4_9),y)
+KCFLAGS:=-Wno-error=date-time
+endif
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
@@ -143,7 +152,46 @@ define Build/Compile
 		ARCH="$(LINUX_KARCH)" \
 		SUBDIRS="$(PKG_BUILD_DIR)/datapath/linux" \
 		PATH="$(TARGET_PATH)" \
+		EXTRA_CFLAGS="$(KCFLAGS)" \
 		KCC="$(KERNEL_CC)"
+endef
+
+#define Package/openvswitch/install
+#	$(INSTALL_DIR) $(1)/etc/openvswitch
+define Package/openvswitch/install
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/openvswitch.init $(1)/etc/init.d/openvswitch
+
+	$(INSTALL_DIR) $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/lib/.libs/libsflow.so.$(LIB_VERSION)  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/lib/.libs/libopenvswitch.so.$(LIB_VERSION)  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/ofproto/.libs/libofproto.so.$(LIB_VERSION)  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/ovsdb/.libs/libovsdb.so.$(LIB_VERSION)  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/lib/.libs/libsflow.so.1  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/lib/.libs/libopenvswitch.so.1  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/ofproto/.libs/libofproto.so.1  $(1)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/ovsdb/.libs/libovsdb.so.1  $(1)/usr/lib/
+
+	$(INSTALL_DIR) $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/.libs/ovs-appctl $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/.libs/ovs-ofctl $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/.libs/ovsdb-client $(1)/usr/bin/
+
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/.libs/ovs-dpctl $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/.libs/ovs-vsctl $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/.libs/ovsdb-tool $(1)/usr/bin/
+
+	$(INSTALL_DIR) $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/vswitchd/.libs/ovs-vswitchd $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/.libs/ovsdb-server $(1)/usr/sbin/
+
+	$(INSTALL_DIR) $(1)/usr/share/openvswitch/
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/vswitchd/vswitch.ovsschema $(1)/usr/share/openvswitch/
+endef
+
+define Package/openvswitch-python/install
+	$(INSTALL_DIR) $(1)/usr/lib/python$(PYTHON_VERSION)/
+	$(CP) $(PKG_BUILD_DIR)/python/ovs/ $(1)/usr/lib/python$(PYTHON_VERSION)/
 endef
 
 define Package/openvswitch-ipsec/install
@@ -151,57 +199,19 @@ define Package/openvswitch-ipsec/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/debian/ovs-monitor-ipsec $(1)/usr/sbin/
 endef
 
-define Package/openvswitch-common/install
-	$(INSTALL_DIR) $(1)/sbin $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/openvswitch.init $(1)/etc/init.d/openvswitch
-
+define Package/openvswitch-benchmark/install
 	$(INSTALL_DIR) $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-appctl $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-benchmark $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-ofctl $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-parse-leaks $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-pki $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/ovsdb-client $(1)/usr/bin/
-	$(INSTALL_DIR) $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/bugtool/ovs-bugtool $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/.libs/ovs-benchmark $(1)/usr/bin/
 endef
 
-define Package/openvswitch-common/postinst
+define Package/openvswitch/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || /etc/init.d/openvswitch enable || true
 endef
 
-define Package/openvswitch-controller/install
-	$(INSTALL_DIR) $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-controller $(1)/usr/bin/
-endef
-
-define Package/openvswitch-switch/install
-	$(INSTALL_DIR) $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-dpctl $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-pcap $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-tcpundump $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-vlan-test $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/utilities/ovs-vsctl $(1)/usr/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/ovsdb-tool $(1)/usr/bin/
-
-	$(INSTALL_DIR) $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/vswitchd/ovs-vswitchd $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ovsdb/ovsdb-server $(1)/usr/sbin/
-
-	$(INSTALL_DIR) $(1)/usr/share/openvswitch/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/vswitchd/vswitch.ovsschema $(1)/usr/share/openvswitch/
-endef
-
-define Package/openvswitch-brcompat/install
-	$(INSTALL_DIR) $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/vswitchd/ovs-brcompatd $(1)/usr/sbin/
-endef
-
+$(eval $(call BuildPackage,openvswitch))
+$(eval $(call BuildPackage,openvswitch-python))
 $(eval $(call BuildPackage,openvswitch-ipsec))
-$(eval $(call BuildPackage,openvswitch-common))
-$(eval $(call BuildPackage,openvswitch-controller))
-$(eval $(call BuildPackage,openvswitch-switch))
-$(eval $(call BuildPackage,openvswitch-brcompat))
+$(eval $(call BuildPackage,openvswitch-benchmark))
 $(eval $(call KernelPackage,openvswitch))
 

@@ -1,0 +1,13 @@
+Index: openvswitch-2.4.0/lib/flow.c
+===================================================================
+--- openvswitch-2.4.0.orig/lib/flow.c	2015-04-09 16:06:51.000000000 +0200
++++ openvswitch-2.4.0/lib/flow.c	2015-04-10 11:43:31.639775926 +0200
+@@ -183,7 +183,7 @@
+ {                                                                       \
+     MINIFLOW_ASSERT(MF.data < MF.end &&                                 \
+                     ((OFS) % 8 != 0                                     \
+-                     || !(MF.map & (UINT64_MAX << (OFS) / 8))))         \
++                     || !(MF.map & (UINT64_MAX << (OFS) / 8))));        \
+                                                                         \
+     if ((OFS) % 8 == 0) {                                               \
+         *(uint8_t *)MF.data = VALUE;                                    \
